@@ -197,7 +197,10 @@ function cyrillicToLatin(text) {
         // 7. Handle O and U with Vowel Harmony (Softness)
         // О -> ö (if word is soft) / o (else)
         if (lowerChar === 'о') {
-            // Find the word boundaries around current char
+            // Heuristic DISABLED: User feedback indicates this causes too many errors.
+            // Default to 'o'. User should use 'ё' for 'ö' if needed, or we rely on explicit mapping.
+
+            // Exception list for words starting with O that should be Ö
             var wordStart = i;
             while (wordStart > 0 && /[а-яА-ЯёЁ]/.test(text[wordStart - 1])) wordStart--;
             var wordEnd = i;
@@ -205,17 +208,17 @@ function cyrillicToLatin(text) {
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
 
-            // Exceptions where O stays O despite soft vowels
-            var exceptions = ["bob", "yok"]; // Add real exceptions if known
-            if (exceptions.indexOf(lowerWord) !== -1) {
-                result += matchCase("o");
-                continue;
+            var exceptionsÖ = ["омюр", "орьнек", "озю", "озь", "огю", "огюнде", "огют", "олюм", "ольчю", "опек"];
+            // Add "омер", "озен" ?
+
+            var isException = false;
+            for (var k = 0; k < exceptionsÖ.length; k++) {
+                if (lowerWord === exceptionsÖ[k] || lowerWord.indexOf(exceptionsÖ[k]) === 0) {
+                    isException = true; break;
+                }
             }
 
-            // Check for softness in the word
-            var isSoft = /[ьЬеЕёЁиИюЮяЯ]/.test(word);
-
-            if (isSoft) {
+            if (isException) {
                 result += matchCase("ö");
             } else {
                 result += matchCase("o");
@@ -225,6 +228,9 @@ function cyrillicToLatin(text) {
 
         // У -> ü (if word is soft) / u (else)
         if (lowerChar === 'у') {
+            // Heuristic DISABLED
+
+            // Exception list for words starting with U that should be Ü
             var wordStart = i;
             while (wordStart > 0 && /[а-яА-ЯёЁ]/.test(text[wordStart - 1])) wordStart--;
             var wordEnd = i;
@@ -232,32 +238,16 @@ function cyrillicToLatin(text) {
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
 
-            // Exceptions where U stays U despite soft vowels
-            // "bugün, cumhuriyet, ğurbet, hususiyet, quvet, qudret, qulle, ruhset, subet, suin, sulh, sufiy, umumiy, uqubet"
-            // Also adding "турк" (turk) to handle Turkmen -> Turkmen
-            var exceptions = [
-                "бугунь", "джумхуриет", "гъурбет", "хусусиет",
-                "къувет", "къудрет", "къулле", "рухсет", "субет",
-                "суин", "сульх", "суфий", "умумий", "укъубет",
-                "турк", "туркмен", "туркменистан"
-            ];
+            var exceptionsÜ = ["ургенч", "умер", "усеин", "учь", "учюн", "уйле", "ульке", "умют", "урьмет", "устюнде", "усть"];
 
-            // Check if word starts with any exception root? 
-            // For now, exact match or startsWith for "турк"
             var isException = false;
-            for (var k = 0; k < exceptions.length; k++) {
-                if (lowerWord === exceptions[k] || (exceptions[k] === "турк" && lowerWord.indexOf("турк") === 0)) {
-                    isException = true;
-                    break;
+            for (var k = 0; k < exceptionsÜ.length; k++) {
+                if (lowerWord === exceptionsÜ[k] || lowerWord.indexOf(exceptionsÜ[k]) === 0) {
+                    isException = true; break;
                 }
             }
 
             if (isException) {
-                result += matchCase("u");
-                continue;
-            }
-
-            if (/[ьЬеЕёЁиИюЮяЯ]/.test(word)) {
                 result += matchCase("ü");
             } else {
                 result += matchCase("u");
