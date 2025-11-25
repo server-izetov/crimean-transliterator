@@ -112,10 +112,7 @@ function cyrillicToLatin(text) {
         // Ю -> yü/yu (start of word, after vowel, after ь/ъ) / ü (after consonant)
         if (lowerChar === 'ю') {
             if (i === 0 || !isCyrillic(prevChar) || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
-                // Heuristic: Check vowel harmony of the REST of the word to decide yü vs yu
-                // If unsure, default to yü (common in soft words) or yu?
-                // Rule: "affixes with e -> yü", "affixes with a -> yu"
-                // Let's scan ahead for the next vowel
+                // Check vowel harmony of the rest of the word
                 var isSoft = true; // Default to soft
                 for (var k = i + 1; k < len; k++) {
                     if (isVowel(text[k])) {
@@ -200,7 +197,7 @@ function cyrillicToLatin(text) {
             continue; // Skip
         }
 
-        // 7. Handle O and U with Vowel Harmony (Softness)
+        // 6. Handle O and U with Vowel Harmony (Softness)
         // О -> ö (if word is soft) / o (else)
         if (lowerChar === 'о') {
             // Find the word boundaries around current char
@@ -210,6 +207,14 @@ function cyrillicToLatin(text) {
             while (wordEnd < len && /[а-яА-ЯёЁ]/.test(text[wordEnd])) wordEnd++;
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
+
+            // Constraint: If preceded by Къ or Гъ (which map to Q/Ğ), force Hard (O)
+            // In Cyrillic, Къ is К + ъ. So we check if prevChar is ъ and prevPrev is К or Г.
+            var prevPrevChar = (i - 2 >= 0) ? text[i - 2] : "";
+            if (prevChar.toLowerCase() === 'ъ' && (prevPrevChar.toLowerCase() === 'к' || prevPrevChar.toLowerCase() === 'г')) {
+                result += matchCase("o");
+                continue;
+            }
 
             // Exceptions where O stays O despite soft vowels (Force Hard)
             // "bob", "yok", "horezm" (proper noun), "kunâ" (proper noun part?)
@@ -230,7 +235,8 @@ function cyrillicToLatin(text) {
             }
 
             // Check for softness in the word
-            var isSoft = /[ьЬеЕёЁиИюЮяЯ]/.test(word);
+            // If word contains 'ы' (hard i) or 'а' (hard a), it implies hard harmony, so ignore soft signs
+            var isSoft = /[ьЬеЕёЁиИюЮяЯ]/.test(word) && !/[ыЫаА]/.test(word);
 
             if (isSoft) {
                 result += matchCase("ö");
@@ -249,12 +255,22 @@ function cyrillicToLatin(text) {
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
 
+            // Constraint: If preceded by Къ or Гъ (which map to Q/Ğ), force Hard (U)
+            var prevPrevChar = (i - 2 >= 0) ? text[i - 2] : "";
+            if (prevChar.toLowerCase() === 'ъ' && (prevPrevChar.toLowerCase() === 'к' || prevPrevChar.toLowerCase() === 'г')) {
+                result += matchCase("u");
+                continue;
+            }
+
             // Exceptions where U stays U despite soft vowels (Force Hard)
             // "suv" (water) -> "suvnen" (hard root, soft suffix)
             // "munkun" (user preference)
             // "kunâ" (if it contains u?) -> "куня" has u.
+            // "турк" (turk)
+            // "туткъал" has 'а', so it's covered by the hard check below.
+            // "уч" (fly) - "учмагьа" has 'а' (hard), "учип" has 'и' (soft).
             var exceptionsHardU = [
-                "сув", "мункунь", "куня"
+                "сув", "мункунь", "куня", "турк"
             ];
 
             var isHardExceptionU = false;
@@ -285,14 +301,15 @@ function cyrillicToLatin(text) {
                 continue;
             }
 
-            if (/[ьЬеЕёЁиИюЮяЯ]/.test(word)) {
+            // If word contains 'ы' or 'а', force hard 'u'
+            if (/[ьЬеЕёЁиИюЮяЯ]/.test(word) && !/[ыЫаА]/.test(word)) {
                 result += matchCase("ü");
             } else {
                 result += matchCase("u");
             }
             continue;
         }
-        // 6. Simple Mapping
+        // 7. Simple Mapping
         var map = {
             'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
             'з': 'z', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
@@ -326,8 +343,6 @@ function latinToCyrillic(text) {
         var matchCase = function (str) {
             if (!str) return "";
             if (isUpper) {
-                // Debug logging
-                // console.log("matchCase: " + str + ", nextChar: " + nextChar);
                 if (str.length > 1 && nextChar && nextChar === nextChar.toUpperCase() && /[A-ZÖÜİÂ]/.test(nextChar)) {
                     // Added check for actual letter to avoid matching spaces/punctuation as "upper"
                     return str.toUpperCase(); // ALL CAPS
@@ -371,10 +386,7 @@ function latinToCyrillic(text) {
             i++; continue;
         }
 
-        // ye -> е (start/after vowel) or just е?
-        // In Cyrillic, 'е' at start is 'ye' sound.
-        // So 'ye' -> 'е' always works for 'ye' sound.
-        // But what about 'e' -> 'э' (start) vs 'е' (consonant)?
+        // ye -> е
         if (lowerChar === 'y' && nextChar.toLowerCase() === 'e') {
             result += matchCase("е");
             i++; continue;
@@ -385,6 +397,7 @@ function latinToCyrillic(text) {
             result += matchCase("ё");
             i++; continue;
         }
+
 
         // yu -> ю
         if (lowerChar === 'y' && nextChar.toLowerCase() === 'u') {
@@ -406,21 +419,9 @@ function latinToCyrillic(text) {
             continue;
         }
 
-        // ö -> ё (after consonant) / о (start? no, ö is always soft)
-        // Actually rule says: ö -> ё (after consonant).
-        // What if start? 'örnek' -> 'орьнек'.
-        // So ö at start -> о + soft sign somewhere?
-        // Rule 3: "ö reads as ё in söyle". "örnek -> орьнек".
-        // So ö -> ё (after consonant).
-        // ö -> о (start). And likely implies softness later.
+        // ö -> ё (after consonant) / о (start)
         if (lowerChar === 'ö') {
             if (i === 0 || isLatinVowel(prevChar)) {
-                // Start of word: örnek -> орьнек. öz -> озь.
-                // It maps to 'о'. The softness 'ь' usually comes after the NEXT consonant.
-                // This is hard to automate perfectly.
-                // Let's map to 'о' and hope for best, or 'ё' if we want to preserve sound?
-                // But 'ё' at start is 'yo'. 'örnek' is not 'yörnek'.
-                // So it must be 'о'.
                 result += matchCase("о");
             } else {
                 result += matchCase("ё");
@@ -428,10 +429,7 @@ function latinToCyrillic(text) {
             continue;
         }
 
-        // ü -> ю (after consonant) / у (start?)
-        // üç -> учь. sürmek -> сюрмек.
-        // So ü -> ю (after consonant).
-        // ü -> у (start).
+        // ü -> ю (after consonant) / у (start)
         if (lowerChar === 'ü') {
             if (i === 0 || isLatinVowel(prevChar)) {
                 result += matchCase("у");
