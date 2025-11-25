@@ -83,9 +83,15 @@ function cyrillicToLatin(text) {
 
         // 2. Handle Context-sensitive vowels
 
-        // Е -> ye (start, after vowel, after ь/ъ) / e (else)
+        // Helper to check if char is a Cyrillic letter
+        var isCyrillic = function (c) {
+            return /[а-яА-ЯёЁ]/.test(c);
+        };
+
+        // Е -> ye (start of word, after vowel, after ь/ъ) / e (else)
         if (lowerChar === 'е') {
-            if (i === 0 || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
+            // Start of word means: i===0 OR prevChar is NOT a Cyrillic letter
+            if (i === 0 || !isCyrillic(prevChar) || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
                 result += matchCase("ye");
             } else {
                 result += matchCase("e");
@@ -93,9 +99,9 @@ function cyrillicToLatin(text) {
             continue;
         }
 
-        // Ё -> yo (start, after vowel, after ь/ъ) / ö (after consonant)
+        // Ё -> yo (start of word, after vowel, after ь/ъ) / ö (after consonant)
         if (lowerChar === 'ё') {
-            if (i === 0 || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
+            if (i === 0 || !isCyrillic(prevChar) || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
                 result += matchCase("yo");
             } else {
                 result += matchCase("ö");
@@ -103,9 +109,9 @@ function cyrillicToLatin(text) {
             continue;
         }
 
-        // Ю -> yü/yu (start, after vowel, after ь/ъ) / ü (after consonant)
+        // Ю -> yü/yu (start of word, after vowel, after ь/ъ) / ü (after consonant)
         if (lowerChar === 'ю') {
-            if (i === 0 || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
+            if (i === 0 || !isCyrillic(prevChar) || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
                 // Heuristic: Check vowel harmony of the REST of the word to decide yü vs yu
                 // If unsure, default to yü (common in soft words) or yu?
                 // Rule: "affixes with e -> yü", "affixes with a -> yu"
@@ -119,7 +125,7 @@ function cyrillicToLatin(text) {
                         break; // Found next vowel
                     }
                     // Stop at word boundary
-                    if (/[^а-яА-ЯёЁ]/.test(text[k])) break;
+                    if (!isCyrillic(text[k])) break;
                 }
 
                 result += matchCase(isSoft ? "yü" : "yu");
@@ -129,9 +135,9 @@ function cyrillicToLatin(text) {
             continue;
         }
 
-        // Я -> ya (start, after vowel, after ь/ъ) / â (after consonant)
+        // Я -> ya (start of word, after vowel, after ь/ъ) / â (after consonant)
         if (lowerChar === 'я') {
-            if (i === 0 || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
+            if (i === 0 || !isCyrillic(prevChar) || isVowel(prevChar) || prevChar === 'ь' || prevChar === 'ъ' || prevChar === 'Ь' || prevChar === 'Ъ') {
                 result += matchCase("ya");
             } else {
                 result += matchCase("â");
@@ -197,10 +203,7 @@ function cyrillicToLatin(text) {
         // 7. Handle O and U with Vowel Harmony (Softness)
         // О -> ö (if word is soft) / o (else)
         if (lowerChar === 'о') {
-            // Heuristic DISABLED: User feedback indicates this causes too many errors.
-            // Default to 'o'. User should use 'ё' for 'ö' if needed, or we rely on explicit mapping.
-
-            // Exception list for words starting with O that should be Ö
+            // Find the word boundaries around current char
             var wordStart = i;
             while (wordStart > 0 && /[а-яА-ЯёЁ]/.test(text[wordStart - 1])) wordStart--;
             var wordEnd = i;
@@ -208,17 +211,28 @@ function cyrillicToLatin(text) {
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
 
-            var exceptionsÖ = ["омюр", "орьнек", "озю", "озь", "огю", "огюнде", "огют", "олюм", "ольчю", "опек"];
-            // Add "омер", "озен" ?
+            // Exceptions where O stays O despite soft vowels (Force Hard)
+            // "bob", "yok", "horezm" (proper noun), "kunâ" (proper noun part?)
+            var exceptionsHard = ["bob", "yok", "хорезм", "куня"];
 
-            var isException = false;
-            for (var k = 0; k < exceptionsÖ.length; k++) {
-                if (lowerWord === exceptionsÖ[k] || lowerWord.indexOf(exceptionsÖ[k]) === 0) {
-                    isException = true; break;
+            var isHardException = false;
+            for (var k = 0; k < exceptionsHard.length; k++) {
+                // Check if word starts with exception root?
+                // "хорезм" -> "хорезмнин". "куня" -> "куня-ургенч" (word is "куня").
+                if (lowerWord === exceptionsHard[k] || lowerWord.indexOf(exceptionsHard[k]) === 0) {
+                    isHardException = true; break;
                 }
             }
 
-            if (isException) {
+            if (isHardException) {
+                result += matchCase("o");
+                continue;
+            }
+
+            // Check for softness in the word
+            var isSoft = /[ьЬеЕёЁиИюЮяЯ]/.test(word);
+
+            if (isSoft) {
                 result += matchCase("ö");
             } else {
                 result += matchCase("o");
@@ -228,9 +242,6 @@ function cyrillicToLatin(text) {
 
         // У -> ü (if word is soft) / u (else)
         if (lowerChar === 'у') {
-            // Heuristic DISABLED
-
-            // Exception list for words starting with U that should be Ü
             var wordStart = i;
             while (wordStart > 0 && /[а-яА-ЯёЁ]/.test(text[wordStart - 1])) wordStart--;
             var wordEnd = i;
@@ -238,16 +249,43 @@ function cyrillicToLatin(text) {
             var word = text.substring(wordStart, wordEnd);
             var lowerWord = word.toLowerCase();
 
-            var exceptionsÜ = ["ургенч", "умер", "усеин", "учь", "учюн", "уйле", "ульке", "умют", "урьмет", "устюнде", "усть"];
+            // Exceptions where U stays U despite soft vowels (Force Hard)
+            // "suv" (water) -> "suvnen" (hard root, soft suffix)
+            // "munkun" (user preference)
+            // "kunâ" (if it contains u?) -> "куня" has u.
+            var exceptionsHardU = [
+                "сув", "мункунь", "куня"
+            ];
 
-            var isException = false;
-            for (var k = 0; k < exceptionsÜ.length; k++) {
-                if (lowerWord === exceptionsÜ[k] || lowerWord.indexOf(exceptionsÜ[k]) === 0) {
-                    isException = true; break;
+            var isHardExceptionU = false;
+            for (var k = 0; k < exceptionsHardU.length; k++) {
+                if (lowerWord === exceptionsHardU[k] || lowerWord.indexOf(exceptionsHardU[k]) === 0) {
+                    isHardExceptionU = true;
+                    break;
                 }
             }
 
-            if (isException) {
+            if (isHardExceptionU) {
+                result += matchCase("u");
+                continue;
+            }
+
+            // Exceptions where U becomes Ü (Force Soft) - usually covered by heuristic, but good for safety
+            var exceptionsÜ = ["ургенч", "умер", "усеин", "учь", "учюн", "уйле", "ульке", "умют", "урьмет", "устюнде", "усть"];
+
+            var isExceptionÜ = false;
+            for (var k = 0; k < exceptionsÜ.length; k++) {
+                if (lowerWord === exceptionsÜ[k] || lowerWord.indexOf(exceptionsÜ[k]) === 0) {
+                    isExceptionÜ = true; break;
+                }
+            }
+
+            if (isExceptionÜ) {
+                result += matchCase("ü");
+                continue;
+            }
+
+            if (/[ьЬеЕёЁиИюЮяЯ]/.test(word)) {
                 result += matchCase("ü");
             } else {
                 result += matchCase("u");
