@@ -1,32 +1,12 @@
 {
-    "timeZone": "GMT",
-    "dependencies": {},
-    "exceptionLogging": "STACKDRIVER",
-    "oauthScopes": [
-        "https://www.googleapis.com/auth/documents.currentonly",
-        "https://www.googleapis.com/auth/script.container.ui",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/script.locale"
-    ],
-    "runtimeVersion": "V8",
-    "addOns": {
-        "common": {
-            "name": "Crimean Tatar Transliterator",
-            "logoUrl": "https://www.gstatic.com/images/branding/product/1x/translate_24dp.png",
-            "useLocaleFromApp": true,
-            "homepageTrigger": {
-                "runFunction": "onOpen",
-                "enabled": true
-            },
-            "layoutProperties": {
-                "primaryColor": "#4285F4",
-                "secondaryColor": "#34A853"
-            }
-        },
-        "docs": {
-            "onFileScopeGrantedTrigger": {
-                "runFunction": "onOpen"
-            }
-        }
-    }
+  "timeZone": "GMT",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/documents.currentonly",
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/script.locale"
+  ],
+  "runtimeVersion": "V8"
 }
