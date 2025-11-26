@@ -78,9 +78,7 @@ function transliterateLat2CyrDocument() {
  */
 function showAlert(result) {
     var ui = DocumentApp.getUi();
-    if (result.success) {
-        ui.alert('Success', result.message, ui.ButtonSet.OK);
-    } else {
+    if (!result.success) {
         ui.alert('Error', result.message, ui.ButtonSet.OK);
     }
 }
@@ -103,21 +101,63 @@ function processTransliteration(mode, selectionOnly) {
             var selection = doc.getSelection();
             if (selection) {
                 var elements = selection.getRangeElements();
+                var textReplacements = [];
+
+                // 1. Collect all replacements
                 for (var i = 0; i < elements.length; i++) {
                     var element = elements[i];
-                    // Only process text elements for now
-                    if (element.getElement().getType() === DocumentApp.ElementType.TEXT) {
-                        var textElement = element.getElement().asText();
-                        var startOffset = element.isPartial() ? element.getStartOffset() : 0;
-                        var endOffset = element.isPartial() ? element.getEndOffsetInclusive() : textElement.getText().length - 1;
+                    var type = element.getElement().getType();
 
+                    var textElement = null;
+                    if (type === DocumentApp.ElementType.TEXT) {
+                        textElement = element.getElement().asText();
+                    } else if (type === DocumentApp.ElementType.PARAGRAPH) {
+                        textElement = element.getElement().asParagraph().editAsText();
+                    } else if (type === DocumentApp.ElementType.LIST_ITEM) {
+                        textElement = element.getElement().asListItem().editAsText();
+                    }
+
+                    if (textElement) {
+                        var isPartial = element.isPartial();
+                        var startOffset = isPartial ? element.getStartOffset() : 0;
+                        var endOffset = isPartial ? element.getEndOffsetInclusive() : textElement.getText().length - 1;
                         var text = textElement.getText().substring(startOffset, endOffset + 1);
-                        var transliterated = transliterateText(text, mode);
 
-                        textElement.deleteText(startOffset, endOffset);
-                        textElement.insertText(startOffset, transliterated);
+                        textReplacements.push({
+                            element: textElement,
+                            start: startOffset,
+                            end: endOffset,
+                            text: text,
+                            isPartial: isPartial
+                        });
                     }
                 }
+
+                // 2. Apply replacements backwards
+                for (var i = textReplacements.length - 1; i >= 0; i--) {
+                    var item = textReplacements[i];
+                    var transliterated = transliterateText(item.text, mode);
+
+                    if (transliterated) {
+                        if (!item.isPartial && item.start === 0 && item.end === item.element.getText().length - 1) {
+                            // Full element replacement - safer/faster
+                            item.element.setText(transliterated);
+                        } else {
+                            // Partial replacement
+                            item.element.deleteText(item.start, item.end);
+                            item.element.insertText(item.start, transliterated);
+                        }
+                    }
+                }
+
+                // Collapse selection to avoid confusing UI state
+                // Place cursor at the BEGINNING of the selection (stable position)
+                if (textReplacements.length > 0) {
+                    var firstItem = textReplacements[0]; // Top-most element
+                    var pos = doc.newPosition(firstItem.element, firstItem.start);
+                    doc.setCursor(pos);
+                }
+
                 return { success: true, message: "Selection transliterated." };
             } else {
                 return { success: false, message: "No text selected." };
