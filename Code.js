@@ -19,7 +19,11 @@
  */
 function onOpen(e) {
     DocumentApp.getUi().createAddonMenu()
-        .addItem('Start Transliteration', 'showSidebar')
+        .addItem('Cyrillic → Latin (Selected Text)', 'transliterateCyr2LatSelection')
+        .addItem('Cyrillic → Latin (Whole Document)', 'transliterateCyr2LatDocument')
+        .addSeparator()
+        .addItem('Latin → Cyrillic (Selected Text)', 'transliterateLat2CyrSelection')
+        .addItem('Latin → Cyrillic (Whole Document)', 'transliterateLat2CyrDocument')
         .addToUi();
 }
 
@@ -37,14 +41,48 @@ function onInstall(e) {
 }
 
 /**
- * Opens a sidebar in the document containing the add-on's user interface.
- * This method is only used by the regular add-on, and is never called by
- * the mobile add-on version.
+ * Transliterates selected text from Cyrillic to Latin.
  */
-function showSidebar() {
-    var ui = HtmlService.createHtmlOutputFromFile('Sidebar')
-        .setTitle('Crimean Tatar Transliterator');
-    DocumentApp.getUi().showSidebar(ui);
+function transliterateCyr2LatSelection() {
+    var result = processTransliteration('cyr2lat', true);
+    showAlert(result);
+}
+
+/**
+ * Transliterates whole document from Cyrillic to Latin.
+ */
+function transliterateCyr2LatDocument() {
+    var result = processTransliteration('cyr2lat', false);
+    showAlert(result);
+}
+
+/**
+ * Transliterates selected text from Latin to Cyrillic.
+ */
+function transliterateLat2CyrSelection() {
+    var result = processTransliteration('lat2cyr', true);
+    showAlert(result);
+}
+
+/**
+ * Transliterates whole document from Latin to Cyrillic.
+ */
+function transliterateLat2CyrDocument() {
+    var result = processTransliteration('lat2cyr', false);
+    showAlert(result);
+}
+
+/**
+ * Shows an alert with the result message.
+ * @param {object} result Result object with success and message properties.
+ */
+function showAlert(result) {
+    var ui = DocumentApp.getUi();
+    if (result.success) {
+        ui.alert('Success', result.message, ui.ButtonSet.OK);
+    } else {
+        ui.alert('Error', result.message, ui.ButtonSet.OK);
+    }
 }
 
 /**

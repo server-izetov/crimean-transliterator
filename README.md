@@ -28,7 +28,6 @@ The transliteration engine implements complex vowel harmony rules, context-sensi
 3. Copy the contents of the following files into the Apps Script editor:
    - `Code.js`
    - `Transliteration.js`
-   - `Sidebar.html`
 4. Copy the contents of `appsscript.json` to replace the default manifest
 5. Save the project
 6. Refresh your Google Doc
@@ -57,14 +56,13 @@ clasp push
 ## Usage
 
 1. Open a Google Doc with Crimean Tatar text
-2. Go to **Extensions** → **Crimean Tatar Transliterator** → **Open Transliterator**
-3. A sidebar will appear with two buttons:
-   - **Cyrillic → Latin** - Convert Cyrillic text to Latin
-   - **Latin → Cyrillic** - Convert Latin text to Cyrillic
-4. Choose whether to process:
-   - **Selected text only** (if you have text selected)
-   - **Whole document** (if no selection)
-5. Click the appropriate button to transliterate
+2. Go to **Extensions** → **Crimean Tatar Transliterator**
+3. Choose one of the 4 options:
+   - **Cyrillic → Latin (Selected Text)** - Convert selected Cyrillic text to Latin
+   - **Cyrillic → Latin (Whole Document)** - Convert entire document from Cyrillic to Latin
+   - **Latin → Cyrillic (Selected Text)** - Convert selected Latin text to Cyrillic
+   - **Latin → Cyrillic (Whole Document)** - Convert entire document from Latin to Cyrillic
+4. A success/error dialog will confirm the operation
 
 ## Examples
 
@@ -146,7 +144,6 @@ Examples:
 
 - **Code.js** - Google Apps Script server-side logic (menu, document manipulation)
 - **Transliteration.js** - Core transliteration engine with all conversion rules
-- **Sidebar.html** - Client-side UI for the add-on
 - **appsscript.json** - Manifest file with OAuth scopes and metadata
 
 ### OAuth Scopes
@@ -179,7 +176,6 @@ rm test_run.js
 crimean-transliterator/
 ├── Code.js                 # Apps Script server-side code
 ├── Transliteration.js      # Core transliteration engine
-├── Sidebar.html           # UI sidebar
 ├── appsscript.json        # Manifest
 ├── .gitignore             # Git ignore rules
 ├── .agent/
